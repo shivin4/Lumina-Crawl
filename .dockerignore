@@ -1,0 +1,13 @@
+target/
+.git/
+.idea/
+*.iml
+.env
+.ENV
+.env.*
+!/.env.example
+README.md
+DEPLOY.md
+terminals/
+assets/
+*.md
