@@ -1,0 +1,12 @@
+spring:
+  config:
+    activate:
+      on-profile: render
+  datasource:
+    url: jdbc:h2:mem:qualitydb;DB_CLOSE_DELAY=-1;MODE=MySQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+server:
+  port: ${PORT:8080}
