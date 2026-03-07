@@ -13,7 +13,7 @@
 
     <groupId>com.qualityanalyzer</groupId>
     <artifactId>website-quality-analyzer</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
     <name>Website Quality Analyzer</name>
     <description>AI-Powered Website Quality Analyzer</description>
 
