@@ -6,6 +6,8 @@ services:
     name: lumina-crawl
     runtime: docker
     plan: free
+    branch: main
+    autoDeploy: true
     healthCheckPath: /api/health
     envVars:
       - key: SPRING_PROFILES_ACTIVE
