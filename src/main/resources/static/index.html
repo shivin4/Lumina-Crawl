@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Syne:wght@500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="/css/styles.css?v=3">
 </head>
 <body>
     <div class="grain" aria-hidden="true"></div>
@@ -30,14 +30,12 @@
                     <span>Crawl</span>
                 </span>
             </a>
-            <nav class="header-nav">
-                <span class="nav-tag">Crawler</span>
-                <span class="nav-tag">SEO Lens</span>
-                <span class="nav-tag nav-tag--accent">Gemini AI</span>
-            </nav>
-            <div class="status-pill">
-                <span class="status-dot"></span>
-                <span id="status-text">Ready</span>
+            <div class="header-actions">
+                <a href="/docs.html" class="header-link">Docs</a>
+                <div class="status-pill">
+                    <span class="status-dot"></span>
+                    <span id="status-text">Ready</span>
+                </div>
             </div>
         </div>
     </header>
@@ -49,11 +47,20 @@
                     <p class="eyebrow">Website Intelligence Platform</p>
                     <h1>See your site<br><span class="gradient-text">through new light.</span></h1>
                     <p class="hero-desc">Deep crawl analysis with broken link detection, content quality scoring, regex URL filtering, and AI-powered fix suggestions.</p>
-                    <ul class="feature-list">
-                        <li><span class="feature-num">01</span> BFS & DFS graph traversal</li>
-                        <li><span class="feature-num">02</span> SEO & content quality scoring</li>
-                        <li><span class="feature-num">03</span> Gemini-powered recommendations</li>
-                    </ul>
+                    <div class="hero-stats">
+                        <div class="hero-stat">
+                            <span class="hero-stat-value">BFS / DFS</span>
+                            <span class="hero-stat-label">Graph crawl</span>
+                        </div>
+                        <div class="hero-stat">
+                            <span class="hero-stat-value">12+</span>
+                            <span class="hero-stat-label">Quality checks</span>
+                        </div>
+                        <div class="hero-stat">
+                            <span class="hero-stat-value">Gemini</span>
+                            <span class="hero-stat-label">AI insights</span>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="scan-card">
@@ -65,8 +72,7 @@
                         <div class="field">
                             <label for="url-input">Target URL</label>
                             <div class="input-wrap">
-                                <svg class="input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-                                <input type="url" id="url-input" placeholder="https://example.com" required>
+                                <input type="url" id="url-input" placeholder="https://example.com" required autocomplete="url">
                             </div>
                         </div>
                         <div class="field-row">
@@ -228,7 +234,7 @@
     </main>
 
     <footer class="footer">
-        <p>Lumina Crawl &middot; Spring Boot &middot; Jsoup &middot; Gemini</p>
+        <p>Lumina Crawl &middot; <a href="/docs.html">Technical Docs</a></p>
     </footer>
 
     <div id="toast" class="toast hidden" role="alert"></div>

@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Lumina Crawl technical documentation — architecture, crawler, analyzers, API, and scoring.">
+    <title>Technical Docs — Lumina Crawl</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Syne:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/styles.css?v=3">
+</head>
+<body class="docs-page">
+    <div class="grain" aria-hidden="true"></div>
+    <div class="glow glow-a" aria-hidden="true"></div>
+    <div class="glow glow-b" aria-hidden="true"></div>
+
+    <header class="header">
+        <div class="header-inner">
+            <a href="/" class="logo">
+                <span class="logo-icon">
+                    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+                        <circle cx="14" cy="14" r="12" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
+                        <circle cx="14" cy="14" r="4" fill="currentColor"/>
+                        <path d="M14 2v4M14 22v4M2 14h4M22 14h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
+                </span>
+                <span class="logo-text">
+                    <strong>Lumina</strong>
+                    <span>Crawl</span>
+                </span>
+            </a>
+            <div class="header-actions">
+                <a href="/docs.html" class="header-link is-active">Docs</a>
+                <a href="/" class="header-link">Analyzer</a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="docs-hero">
+            <p class="eyebrow">Technical Reference</p>
+            <h1>How Lumina Crawl works</h1>
+            <p>
+                Lumina Crawl is a Spring Boot application that crawls websites with Jsoup,
+                runs a pipeline of quality analyzers, persists reports, and optionally calls
+                Google Gemini for actionable recommendations.
+            </p>
+            <nav class="docs-toc" aria-label="On this page">
+                <a href="#architecture">Architecture</a>
+                <a href="#crawler">Crawler</a>
+                <a href="#analyzers">Analyzers</a>
+                <a href="#scoring">Scoring</a>
+                <a href="#ai">Gemini AI</a>
+                <a href="#api">API</a>
+                <a href="#limits">Limits</a>
+            </nav>
+        </div>
+
+        <section class="docs-section" id="architecture">
+            <h2>System architecture</h2>
+            <p>
+                The app serves a static SPA from <code>src/main/resources/static</code> and exposes
+                REST endpoints under <code>/api</code>. Analysis is orchestrated by
+                <strong>AnalysisOrchestratorService</strong>, which coordinates crawling, per-page
+                analysis, aggregation, and persistence.
+            </p>
+            <div class="arch-flow" aria-label="System architecture diagram">
+                <div class="arch-row">
+                    <div class="arch-box arch-box--client">
+                        <span class="arch-box-title">Browser</span>
+                        <span class="arch-box-sub">index.html + app.js</span>
+                    </div>
+                    <div class="arch-connector">
+                        <span class="arch-label">POST /api/analyze</span>
+                        <span class="arch-arrow-line" aria-hidden="true"></span>
+                    </div>
+                    <div class="arch-box arch-box--api">
+                        <span class="arch-box-title">AnalysisController</span>
+                        <span class="arch-box-sub">REST API layer</span>
+                    </div>
+                </div>
+                <div class="arch-row arch-row--center">
+                    <div class="arch-connector arch-connector--down">
+                        <span class="arch-arrow-line" aria-hidden="true"></span>
+                    </div>
+                </div>
+                <div class="arch-row">
+                    <div class="arch-box arch-box--core">
+                        <span class="arch-box-title">AnalysisOrchestrator</span>
+                        <span class="arch-box-sub">Coordinates pipeline</span>
+                    </div>
+                </div>
+                <div class="arch-row arch-row--split">
+                    <div class="arch-box">
+                        <span class="arch-box-title">WebCrawler</span>
+                        <span class="arch-box-sub">Jsoup BFS / DFS</span>
+                    </div>
+                    <div class="arch-box">
+                        <span class="arch-box-title">Analyzers</span>
+                        <span class="arch-box-sub">SEO, URLs, content</span>
+                    </div>
+                    <div class="arch-box">
+                        <span class="arch-box-title">GeminiAiService</span>
+                        <span class="arch-box-sub">AI recommendations</span>
+                    </div>
+                </div>
+                <div class="arch-row arch-row--center">
+                    <div class="arch-connector arch-connector--down">
+                        <span class="arch-arrow-line" aria-hidden="true"></span>
+                    </div>
+                </div>
+                <div class="arch-row">
+                    <div class="arch-box arch-box--db">
+                        <span class="arch-box-title">H2 / MySQL</span>
+                        <span class="arch-box-sub">AnalysisReport persistence</span>
+                    </div>
+                </div>
+            </div>
+            <h3>Tech stack</h3>
+            <ul>
+                <li><strong>Java 17</strong> + Spring Boot 3.2 (Web, JPA, Validation)</li>
+                <li><strong>Jsoup</strong> — HTML fetch and DOM parsing (no JavaScript execution)</li>
+                <li><strong>RestTemplate</strong> — sitemap fetch, link HEAD probes, Gemini HTTP calls</li>
+                <li><strong>Gemini API</strong> — structured JSON recommendations with local fallback</li>
+                <li><strong>H2</strong> (dev) or <strong>MySQL</strong> (production) for report history</li>
+            </ul>
+        </section>
+
+        <section class="docs-section" id="crawler">
+            <h2>Web crawler</h2>
+            <p>
+                <strong>WebCrawlerService</strong> performs bounded graph traversal starting from the
+                seed URL. Links are normalized via <strong>UrlNormalizer</strong> (scheme, host, path,
+                fragment stripping, invalid percent-encoding sanitization).
+            </p>
+            <h3>Traversal strategies</h3>
+            <ul>
+                <li><strong>BFS</strong> — breadth-first queue; discovers pages level by level (default).</li>
+                <li><strong>DFS</strong> — depth-first stack; goes deep along one branch before backtracking.</li>
+            </ul>
+            <h3>Sitemap &amp; bot protection fallback</h3>
+            <p>
+                JavaScript-heavy and Cloudflare-protected sites often return few HTML links. When the
+                crawl queue is sparse, <strong>SitemapDiscoveryService</strong> reads
+                <code>robots.txt</code> and XML sitemaps (via RestTemplate + regex <code>&lt;loc&gt;</code>
+                extraction) to seed additional URLs. <strong>BotProtectionDetector</strong> flags 403
+                responses and JS-challenge pages; warnings are surfaced in the report.
+            </p>
+            <div class="docs-callout">
+                <strong>SPA limitation:</strong> Jsoup only parses server-rendered HTML. React/Vue/Angular
+                routes that require a browser runtime are not executed — sitemap seeding is the primary
+                workaround for discovering URLs on those sites.
+            </div>
+        </section>
+
+        <section class="docs-section" id="analyzers">
+            <h2>Analyzer pipeline</h2>
+            <p>After crawling, each page passes through specialized analyzers. Results are merged into a single <strong>QualityReportDto</strong>.</p>
+            <div class="docs-table-wrap">
+                <table class="docs-table">
+                    <thead>
+                        <tr>
+                            <th>Module</th>
+                            <th>What it checks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>UrlAnalyzerService</td>
+                            <td>URL length, slug readability, query params, special characters</td>
+                        </tr>
+                        <tr>
+                            <td>UrlFilterService</td>
+                            <td>Regex rules — login, cart, checkout, session IDs, admin, PDFs</td>
+                        </tr>
+                        <tr>
+                            <td>HtmlSeoAnalyzerService</td>
+                            <td>Title, meta description, H1/H2, image alt attributes</td>
+                        </tr>
+                        <tr>
+                            <td>ContentQualityService</td>
+                            <td>Word count, keyword density, Flesch readability, thin content (&lt;300 words), Jaccard duplicate similarity</td>
+                        </tr>
+                        <tr>
+                            <td>BrokenLinkCheckerService</td>
+                            <td>HEAD requests on internal/external links (capped, 4s timeout)</td>
+                        </tr>
+                        <tr>
+                            <td>SiteTreeBuilderService</td>
+                            <td>Crawl hierarchy tree from parent map or path-based fallback</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <h3>Regex URL filter examples</h3>
+            <ul>
+                <li><code>.*login.*</code> — login pages</li>
+                <li><code>.*cart.*</code> / <code>.*checkout.*</code> — e-commerce flows</li>
+                <li><code>.*\?sessionid=.*</code> — session parameters</li>
+                <li><code>.*wp-admin.*</code> — CMS admin panels</li>
+                <li><code>.*\.pdf$</code> — static PDF assets</li>
+            </ul>
+        </section>
+
+        <section class="docs-section" id="scoring">
+            <h2>Quality scoring</h2>
+            <p>
+                Each page receives sub-scores for SEO, URL structure, and content quality.
+                The orchestrator computes a weighted <strong>overall score (0–100)</strong> from crawl-wide
+                aggregates: broken link ratio, thin content share, duplicate pairs, and average per-page scores.
+            </p>
+            <p>Score rings in the UI use thresholds:</p>
+            <ul>
+                <li><strong>70+</strong> — green (healthy)</li>
+                <li><strong>40–69</strong> — amber (needs attention)</li>
+                <li><strong>&lt;40</strong> — rose (critical issues)</li>
+            </ul>
+        </section>
+
+        <section class="docs-section" id="ai">
+            <h2>Gemini AI engine</h2>
+            <p>
+                <strong>GeminiAiService</strong> sends a condensed crawl summary to the Gemini
+                <code>generateContent</code> API (default model: <code>gemini-3.1-flash-lite</code>).
+                The prompt requests a JSON array of recommendations with priority, category, and description.
+            </p>
+            <p>
+                If the API key is missing, the request times out, or parsing fails, a
+                <strong>local fallback</strong> generates rule-based suggestions from detected issues
+                (missing meta, broken links, thin content, etc.).
+            </p>
+            <p>Configure via <code>.env</code> or environment variables:</p>
+            <div class="docs-code">GEMINI_API_KEY=your_key_here
+GEMINI_MODEL=gemini-3.1-flash-lite</div>
+        </section>
+
+        <section class="docs-section" id="api">
+            <h2>REST API</h2>
+            <div class="docs-table-wrap">
+                <table class="docs-table">
+                    <thead>
+                        <tr>
+                            <th>Method</th>
+                            <th>Endpoint</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>POST</td>
+                            <td>/api/analyze</td>
+                            <td>Run full site analysis</td>
+                        </tr>
+                        <tr>
+                            <td>GET</td>
+                            <td>/api/reports</td>
+                            <td>List recent saved reports</td>
+                        </tr>
+                        <tr>
+                            <td>GET</td>
+                            <td>/api/reports/{id}</td>
+                            <td>Load a report by ID</td>
+                        </tr>
+                        <tr>
+                            <td>GET</td>
+                            <td>/api/health</td>
+                            <td>Health check for deploy probes</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <h3>Example request</h3>
+            <div class="docs-code">curl -X POST http://localhost:8080/api/analyze \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://example.com",
+    "maxPages": 30,
+    "maxDepth": 4,
+    "crawlStrategy": "BFS"
+  }'</div>
+            <h3>Request fields</h3>
+            <ul>
+                <li><code>url</code> — must start with <code>http://</code> or <code>https://</code></li>
+                <li><code>maxPages</code> — 5–100 (default 15)</li>
+                <li><code>maxDepth</code> — 1–8 (default 4)</li>
+                <li><code>crawlStrategy</code> — <code>BFS</code> or <code>DFS</code></li>
+            </ul>
+        </section>
+
+        <section class="docs-section" id="limits">
+            <h2>Performance &amp; safety limits</h2>
+            <ul>
+                <li>External broken-link checks capped at <strong>25</strong> unique targets</li>
+                <li>Uncrawled internal link checks capped at <strong>30</strong></li>
+                <li>Link probes use <strong>HEAD</strong> with a <strong>4s</strong> timeout</li>
+                <li>RestTemplate connect/read timeouts: <strong>10s / 30s</strong> for Gemini</li>
+                <li>Frontend fetch timeout: <strong>3 minutes</strong> for long crawls</li>
+            </ul>
+            <p>
+                These limits prevent hangs on large sites (e.g. openai.com) while still producing
+                actionable reports within a reasonable window.
+            </p>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p><a href="/">Back to Analyzer</a> &middot; Lumina Crawl</p>
+    </footer>
+</body>
+</html>
