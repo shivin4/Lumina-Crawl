@@ -111,7 +111,3 @@ curl -X POST http://localhost:8080/api/analyze \
 ## Environment Variables
 
 See [`.env.example`](.env.example) for all configuration options.
-
-## License
-
-MIT
